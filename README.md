@@ -1,3 +1,34 @@
+## Features
+
+This fork refactors the image styling to be more customizable. All styling is handled in the [`config.yaml`](internal/img/config.yaml) file, which is parsed at compile time. The CLI flags remain unchanged, as this configuration is not meant to be mutable at run time. Some flags like `--no-decoratoin` and `--no-shadow` can override the config at run time.
+
+### Fonts
+
+Any truetype font is supported. The font is configured by providing the path to a folder containing the required four font types (Regular, Bold, Italic, Bold-Italic).
+
+> [!IMPORTANT]
+> The `.ttf` files must follow the naming convention specified in `config.yaml`
+
+By default, the Ubuntu Mono Nerd Font provided in [`fonts/`](fonts/UbuntuMono) is used.
+
+### Examples
+
+![purple24](.doc/example-purple-fs24.png)
+
+![fun colors](.doc/example-fun-colors.png)
+
+## Development
+
+To build,
+```shell
+go build ./cmd/termshot
+```
+
+It may be useful to create different binaries for reusable configurations, i.e.,
+```shell
+go build -o termshot-macos ./cmd/termshot
+```
+
 # termshot
 
 [![License](https://img.shields.io/github/license/homeport/termshot.svg)](https://github.com/homeport/termshot/blob/main/LICENSE)

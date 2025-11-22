@@ -28,13 +28,13 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath" // CHANGE
 	"strings"
 
 	"github.com/esimov/stackblur-go"
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
 	"github.com/gonvenience/bunt"
-	"github.com/gonvenience/font"
 	"github.com/gonvenience/term"
 	imgfont "golang.org/x/image/font"
 )
@@ -44,20 +44,6 @@ const (
 	yellow = "#E1C04C"
 	green  = "#71BD47"
 )
-
-const (
-	defaultFontSize = 12
-	defaultFontDPI  = 144
-)
-
-// commandIndicator is the string to be used to indicate the command in the screenshot
-var commandIndicator = func() string {
-	if val, ok := os.LookupEnv("TS_COMMAND_INDICATOR"); ok {
-		return val
-	}
-
-	return "➜"
-}()
 
 type Scaffold struct {
 	content bunt.String
@@ -89,12 +75,18 @@ type Scaffold struct {
 	tabSpaces   int
 }
 
+// CHANGE
 func NewImageCreator() Scaffold {
-	f := 2.0
+	f := config.Factor
 
-	fontFaceOptions := &truetype.Options{
-		Size: f * defaultFontSize,
-		DPI:  defaultFontDPI,
+	// Load fonts from configured directory
+	regular, bold, italic, boldItalic, err := LoadFontsFromDirectory(
+		config.FontDir,
+		f*config.FontSize,
+		config.FontDPI,
+	)
+	if err != nil {
+		panic("failed to load fonts from " + config.FontDir + ": " + err.Error())
 	}
 
 	return Scaffold{
@@ -102,24 +94,23 @@ func NewImageCreator() Scaffold {
 
 		factor: f,
 
-		margin:  f * 48,
-		padding: f * 24,
+		margin:  f * config.Margin,
+		padding: f * config.Padding,
 
-		drawDecorations: true,
-		drawShadow:      true,
+		drawDecorations: config.DrawDecorations,
+		drawShadow:      config.DrawShadow,
 
-		shadowBaseColor: "#10101066",
-		shadowRadius:    uint8(math.Min(f*16, 255)),
-		shadowOffsetX:   f * 16,
-		shadowOffsetY:   f * 16,
+		shadowBaseColor: config.ShadowBaseColor,
+		shadowRadius:    uint8(math.Min(f*config.ShadowRadius, 255)),
+		shadowOffsetX:   f * config.ShadowOffsetX,
+		shadowOffsetY:   f * config.ShadowOffsetY,
 
-		regular:    font.Hack.Regular(fontFaceOptions),
-		bold:       font.Hack.Bold(fontFaceOptions),
-		italic:     font.Hack.Italic(fontFaceOptions),
-		boldItalic: font.Hack.BoldItalic(fontFaceOptions),
-
-		lineSpacing: 1.2,
-		tabSpaces:   2,
+		regular:     regular,
+		bold:        bold,
+		italic:      italic,
+		boldItalic:  boldItalic,
+		lineSpacing: config.LineSpacing,
+		tabSpaces:   config.TabSpaces,
 	}
 }
 
@@ -148,13 +139,19 @@ func (s *Scaffold) GetFixedColumns() int {
 	return columns
 }
 
+// CHANGE
 func (s *Scaffold) AddCommand(args ...string) error {
-	return s.AddContent(strings.NewReader(
-		bunt.Sprintf("Lime{%s} DimGray{%s}\n",
-			commandIndicator,
-			strings.Join(args, " "),
-		),
-	))
+	// Build command string with ANSI color codes from config
+	promptColor := hexToANSI(config.PromptColor)
+	commandColor := hexToANSI(config.CommandColor)
+	reset := "\x1b[0m"
+
+	formatted := fmt.Sprintf("%s%s%s %s%s%s\n",
+		promptColor, config.Prompt, reset,
+		commandColor, strings.Join(args, " "), reset,
+	)
+
+	return s.AddContent(strings.NewReader(formatted))
 }
 
 func (s *Scaffold) AddContent(in io.Reader) error {
@@ -226,7 +223,7 @@ func (s *Scaffold) measureContent() (width float64, height float64) {
 	}
 
 	// height, lines times font height and line spacing
-	height = float64(len(lines)) * s.fontHeight() * s.lineSpacing
+	height = s.fontHeight() * (float64(len(lines)-1)*s.lineSpacing + 1) // CHANGE
 
 	return width, height
 }
@@ -282,14 +279,15 @@ func (s *Scaffold) image() (image.Image, error) {
 		dc.DrawImage(dst, 0, 0)
 	}
 
+	// CHANGE
 	// Draw rounded rectangle with outline to produce impression of a window
 	//
 	dc.DrawRoundedRectangle(xOffset, yOffset, width-2*marginX, height-2*marginY, corner)
-	dc.SetHexColor("#151515")
+	dc.SetHexColor(config.BackgroundColor)
 	dc.Fill()
 
 	dc.DrawRoundedRectangle(xOffset, yOffset, width-2*marginX, height-2*marginY, corner)
-	dc.SetHexColor("#404040")
+	dc.SetHexColor(config.OutlineColor)
 	dc.SetLineWidth(f(1))
 	dc.Stroke()
 
@@ -306,7 +304,7 @@ func (s *Scaffold) image() (image.Image, error) {
 
 	// Apply the actual text into the prepared content area of the window
 	//
-	var x, y = xOffset + paddingX, yOffset + paddingY + titleOffset + s.fontHeight()
+	var x, y = xOffset + paddingX, yOffset + paddingY + titleOffset + float64(s.regular.Metrics().Ascent>>6)
 	for _, cr := range s.content {
 		switch cr.Settings & 0x1C {
 		case 4:
@@ -439,4 +437,105 @@ func (s *Scaffold) WritePNG(w io.Writer) error {
 func (s *Scaffold) WriteRaw(w io.Writer) error {
 	_, err := w.Write([]byte(s.content.String()))
 	return err
+}
+
+// CHANGE
+func LoadFontsFromDirectory(dir string, fontSize float64, fontDPI float64) (
+	regular, bold, italic, boldItalic imgfont.Face,
+	err error,
+) {
+	// Verify directory exists and is accessible
+	if info, statErr := os.Stat(dir); statErr != nil {
+		return nil, nil, nil, nil, fmt.Errorf("font directory not accessible: %w", statErr)
+	} else if !info.IsDir() {
+		return nil, nil, nil, nil, fmt.Errorf("font path is not a directory: %s", dir)
+	}
+
+	// Read directory contents
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to read font directory: %w", err)
+	}
+
+	// Find font files matching each required pattern
+	styles := []string{"Regular", "Bold", "Italic", "BoldItalic"}
+	foundFiles := make(map[string]string)
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".ttf") {
+			continue
+		}
+
+		for _, style := range styles {
+			suffix := fmt.Sprintf("-%s.ttf", style)
+			if strings.HasSuffix(entry.Name(), suffix) {
+				if existing, exists := foundFiles[style]; exists {
+					return nil, nil, nil, nil, fmt.Errorf(
+						"multiple files found for %s style: %s and %s",
+						style, existing, entry.Name(),
+					)
+				}
+				foundFiles[style] = entry.Name()
+			}
+		}
+	}
+
+	// Verify all required fonts were found
+	for _, style := range styles {
+		if _, found := foundFiles[style]; !found {
+			return nil, nil, nil, nil, fmt.Errorf(
+				"missing required font file: no file matching *-%s.ttf found in %s",
+				style, dir,
+			)
+		}
+	}
+
+	// Load all fonts
+	fontFaceOptions := &truetype.Options{Size: fontSize, DPI: fontDPI}
+	faces := make(map[string]imgfont.Face)
+
+	for _, style := range styles {
+		fontPath := filepath.Join(dir, foundFiles[style])
+		face, err := loadFontFile(fontPath, fontFaceOptions)
+		if err != nil {
+			return nil, nil, nil, nil, fmt.Errorf("failed to load %s font: %w", style, err)
+		}
+		faces[style] = face
+	}
+
+	return faces["Regular"], faces["Bold"], faces["Italic"], faces["BoldItalic"], nil
+}
+
+// loadFontFile reads and parses a TrueType font file
+func loadFontFile(path string, options *truetype.Options) (imgfont.Face, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	font, err := truetype.Parse(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return truetype.NewFace(font, options), nil
+}
+
+// GetFontOptions returns the font size and DPI used by this scaffold.
+// This is useful for loading custom fonts with the same dimensions.
+func (s *Scaffold) GetFontOptions() (fontSize float64, fontDPI float64) {
+	return s.factor * config.FontSize, config.FontDPI
+}
+
+// hexToRGB converts a hex color string to RGB values
+func hexToRGB(hex string) (r, g, b int) {
+	hex = strings.TrimPrefix(hex, "#")
+	fmt.Sscanf(hex, "%02x%02x%02x", &r, &g, &b)
+	return
+}
+
+// hexToANSI converts a hex color to an ANSI foreground color escape code
+func hexToANSI(hexColor string) string {
+	r, g, b := hexToRGB(hexColor)
+	return fmt.Sprintf("\x1b[38;2;%d;%d;%dm", r, g, b)
 }

@@ -1,0 +1,41 @@
+# Image rendering configuration
+# This file is required for building termshot
+
+# Scaling factor for the entire image (higher = larger image)
+factor: 2.0
+
+# Path to font directory (relative to project root or absolute)
+# Directory must contain: *-Regular.ttf, *-Bold.ttf, *-Italic.ttf, *-BoldItalic.ttf
+font_dir: "fonts/UbuntuMono"
+
+# Font configuration
+font_size: 12
+font_dpi: 144
+
+# Text rendering
+line_spacing: 1.2  # Multiplier for line height
+tab_spaces: 2      # Number of spaces per tab
+
+# Window appearance (values are multiplied by factor)
+margin: 6   # Space around the window
+padding: 12  # Space between window edge and content
+
+# Window decorations
+# These can be overridden by the flags --no-decoration and --no-shadow
+draw_decorations: false  # Show minimize/maximize/close buttons
+draw_shadow: false       # Draw drop shadow
+
+# Window colors
+outline_color: "#404040"     # Border color
+background_color: "#151515"  # Fill color
+
+# Shadow configuration (values are multiplied by factor)
+shadow_base_color: "#10101066"  # Color with alpha transparency
+shadow_radius: 16      # Blur radius (capped at 255)
+shadow_offset_x: 16    # Horizontal shadow offset
+shadow_offset_y: 16    # Vertical shadow offset
+
+# Command prompt appearance (when using --show-cmd,-c flag)
+prompt: "❯"
+prompt_color: "#AB49EC"    # Prompt color
+command_color: "#808080"   # Command color

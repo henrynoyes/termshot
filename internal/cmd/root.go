@@ -88,22 +88,32 @@ window including all terminal colors and text decorations.
 			pt.Cols(uint16(columns))
 		}
 
-		// Disable window shadow if requested
+		// CHANGE
+		// Override shadow setting only if flag was explicitly provided
+		// Config default is used otherwise
 		//
-		if val, err := cmd.Flags().GetBool("no-shadow"); err == nil {
-			scaffold.DrawShadow(!val)
+		if cmd.Flags().Changed("no-shadow") {
+			if val, err := cmd.Flags().GetBool("no-shadow"); err == nil {
+				scaffold.DrawShadow(!val)
+			}
 		}
 
-		// Disable window decorations (buttons) if requested
+		// Override decoration setting only if flag was explicitly provided
+		// Config default is used otherwise
 		//
-		if val, err := cmd.Flags().GetBool("no-decoration"); err == nil {
-			scaffold.DrawDecorations(!val)
+		if cmd.Flags().Changed("no-decoration") {
+			if val, err := cmd.Flags().GetBool("no-decoration"); err == nil {
+				scaffold.DrawDecorations(!val)
+			}
 		}
 
-		// Configure that canvas is clipped at the end
+		// Override canvas clipping only if flag was explicitly provided
+		// Config default is used otherwise
 		//
-		if val, err := cmd.Flags().GetBool("clip-canvas"); err == nil {
-			scaffold.ClipCanvas(val)
+		if cmd.Flags().Changed("clip-canvas") {
+			if val, err := cmd.Flags().GetBool("clip-canvas"); err == nil {
+				scaffold.ClipCanvas(val)
+			}
 		}
 
 		// Optional: Prepend command line arguments to output content
