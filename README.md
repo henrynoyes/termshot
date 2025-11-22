@@ -1,6 +1,6 @@
 ## Features
 
-This fork refactors the image styling to be more customizable. All styling is handled in the [`config.yaml`](internal/img/config.yaml) file, which is parsed at compile time. The CLI flags remain unchanged, as this configuration is not meant to be mutable at run time. Some flags like `--no-decoration` and `--no-shadow` can override the config at run time.
+This fork refactors the image styling to be more customizable. All styling is handled in the [`config.yaml`](internal/img/config.yaml) file, which is parsed at build-time. The CLI flags remain unchanged, as this configuration is not meant to be mutable at run-time. Some flags like `--no-decoration` and `--no-shadow` can override the config.
 
 ### Fonts
 
@@ -9,7 +9,7 @@ Any TrueType font is supported. The font is configured by providing the path to 
 > [!IMPORTANT]
 > The `.ttf` files must follow the naming convention specified in `config.yaml`
 
-By default, the Ubuntu Mono Nerd Font provided in [`fonts/`](fonts/UbuntuMono) is used.
+By default, the Ubuntu Mono Nerd Font provided in [`fonts/`](internal/img/fonts/) is used.
 
 ### Examples
 

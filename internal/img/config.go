@@ -1,7 +1,7 @@
 package img
 
 import (
-	_ "embed"
+	"embed"
 
 	"gopkg.in/yaml.v3"
 )
@@ -31,6 +31,9 @@ type Config struct {
 
 //go:embed config.yaml
 var configYAML []byte
+
+//go:embed fonts
+var fontsFS embed.FS
 
 var config Config
 

@@ -26,8 +26,8 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"io/fs"
 	"math"
-	"os"
 	"path/filepath" // CHANGE
 	"strings"
 
@@ -79,14 +79,15 @@ type Scaffold struct {
 func NewImageCreator() Scaffold {
 	f := config.Factor
 
-	// Load fonts from configured directory
-	regular, bold, italic, boldItalic, err := LoadFontsFromDirectory(
+	// Load fonts from embedded filesystem
+	regular, bold, italic, boldItalic, err := LoadFontsFromEmbedded(
+		fontsFS,
 		config.FontDir,
 		f*config.FontSize,
 		config.FontDPI,
 	)
 	if err != nil {
-		panic("failed to load fonts from " + config.FontDir + ": " + err.Error())
+		panic("failed to load embedded fonts from " + config.FontDir + ": " + err.Error())
 	}
 
 	return Scaffold{
@@ -440,21 +441,14 @@ func (s *Scaffold) WriteRaw(w io.Writer) error {
 }
 
 // CHANGE
-func LoadFontsFromDirectory(dir string, fontSize float64, fontDPI float64) (
+func LoadFontsFromEmbedded(fsys fs.FS, dir string, fontSize float64, fontDPI float64) (
 	regular, bold, italic, boldItalic imgfont.Face,
 	err error,
 ) {
-	// Verify directory exists and is accessible
-	if info, statErr := os.Stat(dir); statErr != nil {
-		return nil, nil, nil, nil, fmt.Errorf("font directory not accessible: %w", statErr)
-	} else if !info.IsDir() {
-		return nil, nil, nil, nil, fmt.Errorf("font path is not a directory: %s", dir)
-	}
-
-	// Read directory contents
-	entries, err := os.ReadDir(dir)
+	// Read directory contents from embedded FS
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("failed to read font directory: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to read embedded font directory: %w", err)
 	}
 
 	// Find font files matching each required pattern
@@ -496,7 +490,7 @@ func LoadFontsFromDirectory(dir string, fontSize float64, fontDPI float64) (
 
 	for _, style := range styles {
 		fontPath := filepath.Join(dir, foundFiles[style])
-		face, err := loadFontFile(fontPath, fontFaceOptions)
+		face, err := loadFontFileFromFS(fsys, fontPath, fontFaceOptions)
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("failed to load %s font: %w", style, err)
 		}
@@ -506,9 +500,9 @@ func LoadFontsFromDirectory(dir string, fontSize float64, fontDPI float64) (
 	return faces["Regular"], faces["Bold"], faces["Italic"], faces["BoldItalic"], nil
 }
 
-// loadFontFile reads and parses a TrueType font file
-func loadFontFile(path string, options *truetype.Options) (imgfont.Face, error) {
-	data, err := os.ReadFile(path)
+// loadFontFileFromFS reads and parses a TrueType font file from an embedded filesystem
+func loadFontFileFromFS(fsys fs.FS, path string, options *truetype.Options) (imgfont.Face, error) {
+	data, err := fs.ReadFile(fsys, path)
 	if err != nil {
 		return nil, err
 	}
