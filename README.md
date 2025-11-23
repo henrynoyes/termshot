@@ -9,7 +9,7 @@ Any TrueType font is supported. The font is configured by providing the path to 
 > [!IMPORTANT]
 > The `.ttf` files must follow the naming convention specified in `config.yaml`
 
-By default, the Ubuntu Mono Nerd Font provided in [`fonts/`](internal/img/fonts/) is used.
+By default, the Ubuntu Mono Nerd Font provided in [`internal/img/fonts/`](internal/img/fonts/) is used.
 
 ### Examples
 
