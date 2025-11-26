@@ -6,7 +6,7 @@ factor: 2.0
 
 # Path to font directory (relative to project root or absolute)
 # Directory must contain: *-Regular.ttf, *-Bold.ttf, *-Italic.ttf, *-BoldItalic.ttf
-font_dir: "fonts/UbuntuMono"
+font_dir: "fonts/DejaVuSansMono"
 
 # Font configuration
 font_size: 12
